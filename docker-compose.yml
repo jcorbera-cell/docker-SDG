@@ -1,0 +1,48 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  # Servicio para la base de datos PostgreSQL
+  db:
+    image: postgres:17.0-bookworm
+    container_name: postgres_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Password#1234
+      POSTGRES_DB: synthetic_data
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql
+
+  # Servicio para la aplicación de Python
+  app:
+    # Construye la imagen usando el Dockerfile del directorio actual.
+    build: .
+    container_name: python_app
+    restart: always
+    # Mapea el puerto 8501 del contenedor al 8501 de tu máquina.
+    ports:
+      - "8501:8501"
+    # Monta el código local en el contenedor para ver cambios en tiempo real.
+    volumes:
+      - .:/app
+      - ./data:/app/data
+    # Pasa variables de entorno a la aplicación.
+    environment:
+      # La URL para conectarse a la base de datos.
+      # 'db' es el nombre del servicio de postgres, Docker lo resuelve como el hostname.
+      - DATABASE_URL=postgresql://postgres:Password#1234@db:5432/synthetic_data
+      # Variables para Langfuse (puedes completarlas después)
+      - LANGFUSE_PUBLIC_KEY=pk-lf-...
+      - LANGFUSE_SECRET_KEY=sk-lf-...
+      - LANGFUSE_HOST=https://cloud.langfuse.com
+    # Asegura que el servicio 'db' se inicie antes que el servicio 'app'.
+    depends_on:
+      - db
+
+# Define el volumen para persistir los datos de la base de datos.
+volumes:
+  postgres_data:
