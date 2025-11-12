@@ -84,3 +84,15 @@ Thumbs.db
 # Docker
 .dockerignore
 
+# Local scripts
+run_local.sh
+run_local.bat
+
+# Local config
+.streamlit/config.toml.local
+
+# Local documentation
+architecture.md
+configuration.md
+github_setup.md
+setup_env.md
