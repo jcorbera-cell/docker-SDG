@@ -1,3 +1,5 @@
+import html
+import re
 import streamlit as st
 from src.application.services.chat_with_data_service import ChatWithDataService
 from src.infrastructure.ai.gemini_client import GeminiClient
@@ -145,12 +147,106 @@ class ChatWithDataPage:
                     if chat_item.get('response_text'):
                         st.write(chat_item['response_text'])
                     
-                    # Mostrar SQL si está configurado
+                    # Mostrar SQL si está configurado - Estilo similar a la imagen
                     if st.session_state.chat_config['show_sql'] and chat_item.get('sql'):
-                        with st.expander("🔍 Ver Consulta SQL", expanded=False):
-                            st.code(chat_item['sql'], language='sql')
-                            
-                            # [Opcional] Editor para modificar SQL
+                        # CSS personalizado para el estilo de la consulta SQL
+                        st.markdown("""
+                        <style>
+                        .sql-query-container {
+                            background-color: #2b2b2b;
+                            border-radius: 8px;
+                            padding: 16px;
+                            margin: 16px 0;
+                            font-family: 'Courier New', monospace;
+                        }
+                        .sql-query-header {
+                            color: #ffffff;
+                            font-size: 14px;
+                            font-weight: 600;
+                            margin-bottom: 12px;
+                        }
+                        .sql-keyword {
+                            color: #ffffff;
+                            font-weight: bold;
+                        }
+                        .sql-identifier {
+                            color: #ffffff;
+                        }
+                        .query-result-header {
+                            display: flex;
+                            align-items: center;
+                            gap: 8px;
+                            margin-top: 24px;
+                            margin-bottom: 12px;
+                        }
+                        .query-result-table {
+                            background-color: #ffffff;
+                            border: 1px solid #e0e0e0;
+                            border-radius: 4px;
+                            overflow: hidden;
+                        }
+                        .query-result-header-cell {
+                            background-color: #f5f5f5;
+                            padding: 12px;
+                            font-weight: 600;
+                            border-bottom: 2px solid #e0e0e0;
+                        }
+                        .query-result-cell {
+                            padding: 12px;
+                            border-bottom: 1px solid #e0e0e0;
+                        }
+                        </style>
+                        """, unsafe_allow_html=True)
+                        
+                        # Encabezado de la consulta SQL
+                        st.markdown('<div class="sql-query-header"><>&nbsp;Generated SQL Query</div>', unsafe_allow_html=True)
+                        
+                        # Caja con el SQL query
+                        sql_query = chat_item['sql']
+                        # Resaltar palabras clave SQL
+                        sql_keywords = ['SELECT', 'FROM', 'WHERE', 'JOIN', 'INNER', 'LEFT', 'RIGHT', 'FULL', 'OUTER', 
+                                      'ON', 'GROUP', 'BY', 'ORDER', 'HAVING', 'COUNT', 'SUM', 'AVG', 'MAX', 'MIN', 
+                                      'AS', 'AND', 'OR', 'NOT', 'IN', 'LIKE', 'BETWEEN', 'IS', 'NULL', 'DISTINCT',
+                                      'INSERT', 'UPDATE', 'DELETE', 'CREATE', 'ALTER', 'DROP', 'TABLE', 'INDEX',
+                                      'UNION', 'INTERSECT', 'EXCEPT', 'CASE', 'WHEN', 'THEN', 'ELSE', 'END']
+                        
+                        # Crear HTML con resaltado de sintaxis
+                        # Usar placeholders temporales para evitar conflictos con el escape HTML
+                        placeholder_map = {}
+                        placeholder_counter = 0
+                        
+                        def create_placeholder(match):
+                            nonlocal placeholder_counter
+                            placeholder = f"__SQL_KEYWORD_{placeholder_counter}__"
+                            placeholder_map[placeholder] = match.group(0).upper()
+                            placeholder_counter += 1
+                            return placeholder
+                        
+                        # Usar un solo patrón regex para evitar conflictos
+                        keywords_pattern = '|'.join(r'\b' + re.escape(kw) + r'\b' for kw in sql_keywords)
+                        pattern = re.compile(keywords_pattern, re.IGNORECASE)
+                        
+                        # Marcar palabras clave con placeholders
+                        temp_sql = pattern.sub(create_placeholder, sql_query)
+                        
+                        # Escapar HTML del SQL (ahora seguro porque las palabras clave están marcadas)
+                        escaped_sql = html.escape(temp_sql)
+                        
+                        # Reemplazar placeholders con spans de resaltado
+                        highlighted_sql = escaped_sql
+                        for placeholder, keyword in placeholder_map.items():
+                            highlighted_sql = highlighted_sql.replace(
+                                html.escape(placeholder),
+                                f'<span class="sql-keyword">{keyword}</span>'
+                            )
+                        
+                        st.markdown(
+                            f'<div class="sql-query-container"><span class="sql-identifier">{highlighted_sql}</span></div>',
+                            unsafe_allow_html=True
+                        )
+                        
+                        # [Opcional] Editor para modificar SQL (en un expander)
+                        with st.expander("🔧 Editar SQL", expanded=False):
                             edited_sql = st.text_area(
                                 "Editar SQL (opcional):",
                                 value=chat_item['sql'],
@@ -174,12 +270,24 @@ class ChatWithDataPage:
                                 except ServiceException as e:
                                     st.error(f"Error al ejecutar SQL: {e}")
                     
-                    # Mostrar resultados tabulares
+                    # Mostrar resultados tabulares - Estilo similar a la imagen
                     if chat_item.get('result_df') is not None:
                         result_df = chat_item['result_df']
                         if not result_df.empty:
-                            st.subheader("📊 Resultados")
-                            st.dataframe(result_df, use_container_width=True)
+                            # Encabezado "Query Result" con ícono de base de datos
+                            st.markdown(
+                                '<div class="query-result-header">'
+                                '<span style="font-size: 18px; font-weight: 600;">🗄️ Query Result</span>'
+                                '</div>',
+                                unsafe_allow_html=True
+                            )
+                            
+                            # Mostrar tabla estilizada
+                            st.dataframe(
+                                result_df,
+                                use_container_width=True,
+                                hide_index=True
+                            )
                             
                             # Botón para descargar resultados
                             csv = result_df.to_csv(index=False).encode('utf-8')

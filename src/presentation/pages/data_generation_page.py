@@ -7,6 +7,7 @@ from src.application.services.data_generation_service import DataGenerationServi
 from src.application.services.data_modification_service import DataModificationService
 from src.application.dtos.generation_request import GenerationRequest
 from src.infrastructure.ai.gemini_client import GeminiClient
+from src.infrastructure.observability.langfuse_client import LangfuseClient
 from src.infrastructure.config.settings import Settings
 
 class DataGenerationPage:
@@ -17,10 +18,11 @@ class DataGenerationPage:
         try:
             settings = Settings.from_env()
             ai_client = GeminiClient(settings)
+            langfuse_client = LangfuseClient(settings)
             
             self.parser_service = DDLParserService()
-            self.generation_service = DataGenerationService(ai_client)
-            self.modification_service = DataModificationService(ai_client)
+            self.generation_service = DataGenerationService(ai_client, langfuse_client)
+            self.modification_service = DataModificationService(ai_client, langfuse_client)
             
             self.ddl_uploader = DDLUploader(self.parser_service)
             self.data_editor = DataEditor()

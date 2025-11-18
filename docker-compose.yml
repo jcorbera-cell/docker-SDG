@@ -8,11 +8,11 @@ services:
     container_name: postgres_db
     restart: always
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: Password#1234
-      POSTGRES_DB: synthetic_data
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Password#1234}
+      POSTGRES_DB: ${POSTGRES_DB:-synthetic_data}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql
@@ -34,11 +34,15 @@ services:
     environment:
       # La URL para conectarse a la base de datos.
       # 'db' es el nombre del servicio de postgres, Docker lo resuelve como el hostname.
-      - DATABASE_URL=postgresql://postgres:Password#1234@db:5432/synthetic_data
-      # Variables para Langfuse (puedes completarlas después)
-      - LANGFUSE_PUBLIC_KEY=pk-lf-...
-      - LANGFUSE_SECRET_KEY=sk-lf-...
-      - LANGFUSE_HOST=https://cloud.langfuse.com
+      # Se construye dinámicamente usando las variables de PostgreSQL
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-Password#1234}@db:5432/${POSTGRES_DB:-synthetic_data}
+      # Variables para Langfuse (opcionales)
+      - LANGFUSE_PUBLIC_KEY=${LANGFUSE_PUBLIC_KEY:-}
+      - LANGFUSE_SECRET_KEY=${LANGFUSE_SECRET_KEY:-}
+      - LANGFUSE_HOST=${LANGFUSE_HOST:-https://cloud.langfuse.com}
+      # Variables para Google Gemini (opcionales)
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - MODEL_NAME=${MODEL_NAME:-gemini-2.0-flash-exp}
     # Asegura que el servicio 'db' se inicie antes que el servicio 'app'.
     depends_on:
       - db
