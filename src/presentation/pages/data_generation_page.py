@@ -11,10 +11,10 @@ from src.infrastructure.observability.langfuse_client import LangfuseClient
 from src.infrastructure.config.settings import Settings
 
 class DataGenerationPage:
-    """Página principal de generación de datos"""
+    """Main data generation page"""
     
     def __init__(self):
-        # Inyección de dependencias (patrón Dependency Injection)
+        # Dependency injection (Dependency Injection pattern)
         try:
             settings = Settings.from_env()
             ai_client = GeminiClient(settings)
@@ -28,39 +28,68 @@ class DataGenerationPage:
             self.data_editor = DataEditor()
             self.data_downloader = DataDownloader()
         except Exception as e:
-            st.error(f"Error al inicializar la página: {e}")
+            st.error(f"Error initializing page: {e}")
             st.stop()
     
     def render(self):
-        """Renderiza la página completa"""
-        st.title("Generación de Datos Sintéticos")
+        """Renders the complete page"""
+        st.title("Synthetic Data Generation")
+        
+        # Initialize prompt in session state if not exists
+        if 'generation_prompt' not in st.session_state:
+            st.session_state.generation_prompt = ""
+        
+        # Initialize temperature and max_tokens in session state if not exists
+        if 'generation_temperature' not in st.session_state:
+            st.session_state.generation_temperature = 0.7
+        if 'generation_max_tokens' not in st.session_state:
+            st.session_state.generation_max_tokens = 4096
         
         with st.container(border=True):
             prompt = st.text_input(
-                "Introduce tu prompt aquí...", 
-                placeholder="Ej: Genera 10 registros de clientes con datos realistas."
+                "Enter your prompt here...", 
+                placeholder="E.g.: Generate 10 customer records with realistic data.",
+                value=st.session_state.generation_prompt,
+                key="generation_prompt_input"
             )
+            # Save prompt to session state
+            st.session_state.generation_prompt = prompt
             
             schema = self.ddl_uploader.render()
             
-            # Mostrar advertencia si no hay esquema cargado
+            # Show warning if no schema is loaded
             if not schema:
-                st.info("ℹ️ Por favor, carga un esquema DDL para comenzar.")
+                st.info("ℹ️ Please upload a DDL schema to begin.")
             
-            st.subheader("Parámetros Avanzados")
+            st.subheader("Advanced Parameters")
             col1, col2 = st.columns(2)
             with col1:
-                temperature = st.slider("Temperatura", min_value=0.0, max_value=1.0, value=0.7, step=0.1)
+                temperature = st.slider(
+                    "Temperature", 
+                    min_value=0.0, 
+                    max_value=1.0, 
+                    value=st.session_state.generation_temperature, 
+                    step=0.1,
+                    key="temperature_slider"
+                )
+                st.session_state.generation_temperature = temperature
             with col2:
-                max_tokens = st.number_input("Máx Tokens", min_value=256, max_value=8192, value=4096)
+                max_tokens = st.number_input(
+                    "Max Tokens", 
+                    min_value=256, 
+                    max_value=8192, 
+                    value=st.session_state.generation_max_tokens,
+                    key="max_tokens_input"
+                )
+                st.session_state.generation_max_tokens = max_tokens
             
-            if st.button("Generar", type="primary"):
+            if st.button("Generate", type="primary"):
                 if not schema:
-                    st.error("Por favor, carga un esquema DDL antes de generar los datos.")
+                    st.error("Please upload a DDL schema before generating data.")
                 elif not prompt:
-                    st.error("Por favor, introduce un prompt con las instrucciones.")
+                    st.error("Please enter a prompt with instructions.")
                 else:
-                    with st.spinner("Generando datos... Esto puede tardar un momento."):
+                    with st.spinner("Generating data... This may take a moment."):
                         request = GenerationRequest(
                             ddl_schema=schema.content,
                             user_prompt=prompt,
@@ -71,39 +100,39 @@ class DataGenerationPage:
                         try:
                             generated_data = self.generation_service.generate(request)
                             st.session_state.generated_data = generated_data
-                            st.success("¡Datos generados exitosamente!")
+                            st.success("Data generated successfully!")
                         except Exception as e:
-                            st.error(f"Error al generar datos: {e}")
+                            st.error(f"Error generating data: {e}")
         
         if 'generated_data' in st.session_state and st.session_state.generated_data:
             self._render_data_editing()
     
     def _render_data_editing(self):
-        """Renderiza la sección de edición de datos"""
+        """Renders the data editing section"""
         st.markdown("---")
-        st.header("Vista Previa y Edición de Datos")
+        st.header("Data Preview and Editing")
         
         self.data_editor.render(st.session_state.generated_data)
         
-        st.subheader("Edición Rápida con Instrucciones")
+        st.subheader("Quick Edit with Instructions")
         modification_prompt = st.text_input(
-            "Introduce instrucciones de edición rápida...",
-            placeholder="Ej: Añade un nuevo usuario llamado 'John Doe' a la tabla de usuarios."
+            "Enter quick edit instructions...",
+            placeholder="E.g.: Add a new user named 'John Doe' to the users table."
         )
         
-        if st.button("Enviar Modificación"):
+        if st.button("Apply Modification"):
             if modification_prompt:
-                with st.spinner("Aplicando modificaciones..."):
+                with st.spinner("Applying modifications..."):
                     try:
                         st.session_state.generated_data = self.modification_service.modify(
                             st.session_state.generated_data,
                             modification_prompt
                         )
-                        st.success("Modificación aplicada exitosamente")
+                        st.success("Modification applied successfully")
                         st.rerun()
                     except Exception as e:
-                        st.error(f"Error al modificar datos: {e}")
+                        st.error(f"Error modifying data: {e}")
             else:
-                st.warning("Por favor, introduce una instrucción de modificación.")
+                st.warning("Please enter a modification instruction.")
         
 

@@ -6,17 +6,18 @@ from src.domain.entities.ddl_schema import DDLSchema
 from src.domain.exceptions.domain_exceptions import InvalidSchemaException
 
 class DDLUploader:
-    """Componente para cargar y parsear archivos DDL"""
+    """Component for uploading and parsing DDL files"""
     
     def __init__(self, parser_service: DDLParserService):
         self.parser_service = parser_service
     
     def render(self) -> Optional[DDLSchema]:
-        """Renderiza el componente y retorna el esquema parseado"""
+        """Renders the component and returns the parsed schema"""
         uploaded_file = st.file_uploader(
-            "Cargar Esquema DDL",
+            "Upload DDL Schema",
             type=['sql', 'ddl'],
-            help="Sube un archivo .sql o .ddl con el esquema de tu base de datos."
+            help="Upload a .sql or .ddl file with your database schema.",
+            key="ddl_file_uploader"
         )
         
         if uploaded_file is not None:
@@ -26,52 +27,58 @@ class DDLUploader:
             try:
                 schema = self.parser_service.parse(ddl_content)
          
-                # Guardar el esquema en session_state para previsualización
+                # Save the schema and filename in session_state
                 st.session_state.ddl_schema = schema
+                st.session_state.ddl_schema_filename = uploaded_file.name
                 
-                # Mostrar previsualización del esquema
+                # Show schema preview
                 self._render_schema_preview(schema)
                 
                 return schema
             except InvalidSchemaException as e:
-                st.error(f"Error al parsear el esquema: {e}")
+                st.error(f"Error parsing schema: {e}")
                 return None
         
-        # Si hay un esquema guardado en session_state, mostrarlo
+        # If there's a schema saved in session_state, show it
         if 'ddl_schema' in st.session_state and st.session_state.ddl_schema:
+            # Show indicator that a schema is already loaded
+            schema_filename = st.session_state.get('ddl_schema_filename', 'previously loaded file')
+            st.info(f"📄 Schema loaded: **{schema_filename}** (You can upload a new file to replace it)")
+            
+            # Show schema preview
             self._render_schema_preview(st.session_state.ddl_schema)
             return st.session_state.ddl_schema
         
         return None
     
     def _render_schema_preview(self, schema: DDLSchema):
-        """Renderiza la previsualización del esquema DDL"""
-        with st.expander("📋 Previsualizar Esquema DDL Cargado", expanded=True):
-            # Información de las tablas detectadas
-            st.markdown("**Tablas detectadas:**")
+        """Renders the DDL schema preview"""
+        with st.expander("📋 Preview Loaded DDL Schema", expanded=True):
+            # Information about detected tables
+            st.markdown("**Detected tables:**")
             if schema.table_names:
                 cols = st.columns(min(len(schema.table_names), 4))
                 for idx, table_name in enumerate(schema.table_names):
                     with cols[idx % len(cols)]:
                         st.markdown(f"• `{table_name}`")
             else:
-                st.warning("No se detectaron tablas en el esquema.")
+                st.warning("No tables detected in the schema.")
             
             st.markdown("---")
             
-            # Contenido del esquema
-            st.markdown("**Contenido del esquema:**")
+            # Schema content
+            st.markdown("**Schema content:**")
             
-            # Mostrar el código SQL con opción de copiar
+            # Show SQL code with copy option
             code_container = st.container()
             with code_container:
                 st.code(schema.content, language='sql')
             
-            # Información adicional
+            # Additional information
             st.markdown("---")
             col1, col2 = st.columns(2)
             with col1:
-                st.metric("Número de tablas", len(schema.table_names))
+                st.metric("Number of tables", len(schema.table_names))
             with col2:
-                st.metric("Tamaño del esquema", f"{len(schema.content)} caracteres")
+                st.metric("Schema size", f"{len(schema.content)} characters")
 

@@ -74,7 +74,7 @@ class ChatWithDataService:
         table_names = list(generated_data.tables.keys())
         
         if not table_names:
-            error_msg = "No hay datos disponibles para consultar. Por favor, genera datos primero."
+            error_msg = "No data available to query. Please generate data first."
             return {
                 'sql': None,
                 'result_df': None,
@@ -175,7 +175,7 @@ class ChatWithDataService:
             }
             
         except AIGenerationException as e:
-            error_msg = f"Error al generar SQL: {e}"
+            error_msg = f"Error generating SQL: {e}"
             self.langfuse_client.track_sql_generation(
                 user_query=user_query,
                 generated_sql="",
@@ -190,7 +190,7 @@ class ChatWithDataService:
                 'response_text': error_msg
             }
         except ServiceException as e:
-            error_msg = f"Error al ejecutar consulta: {e}"
+            error_msg = f"Error executing query: {e}"
             self.langfuse_client.track_sql_generation(
                 user_query=user_query,
                 generated_sql=generated_sql if 'generated_sql' in locals() else "",
@@ -205,7 +205,7 @@ class ChatWithDataService:
                 'response_text': error_msg
             }
         except Exception as e:
-            error_msg = f"Error inesperado: {e}"
+            error_msg = f"Unexpected error: {e}"
             return {
                 'sql': None,
                 'result_df': None,
@@ -231,17 +231,17 @@ class ChatWithDataService:
         result_df: pd.DataFrame,
         has_visualization: bool
     ) -> str:
-        """Genera un texto de respuesta amigable para el usuario"""
-        response = f"He ejecutado tu consulta y encontré {len(result_df)} resultado(s).\n\n"
+        """Generates a friendly response text for the user in English"""
+        response = f"I've executed your query and found {len(result_df)} result(s).\n\n"
         
         if not result_df.empty:
-            response += f"La consulta SQL generada fue:\n```sql\n{sql}\n```\n\n"
-            response += f"Los resultados muestran {len(result_df.columns)} columna(s)."
+            response += f"The generated SQL query was:\n```sql\n{sql}\n```\n\n"
+            response += f"The results show {len(result_df.columns)} column(s)."
             
             if has_visualization:
-                response += " También he generado una visualización de los datos."
+                response += " I've also generated a visualization of the data."
         else:
-            response += "La consulta se ejecutó correctamente pero no devolvió resultados."
+            response += "The query executed successfully but returned no results."
         
         return response
     

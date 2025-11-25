@@ -2,21 +2,21 @@ import streamlit as st
 from src.presentation.pages.data_generation_page import DataGenerationPage
 from src.presentation.pages.chat_with_data_page import ChatWithDataPage
 
-# Configuración de la página
+# Page configuration
 st.set_page_config(layout="wide")
 
-# Inicialización del estado de la sesión
+# Session state initialization
 if 'generated_data' not in st.session_state:
     st.session_state.generated_data = None
 
-# Navegación
-st.sidebar.title("Asistente de Datos")
-app_mode = st.sidebar.radio("Navegación", ["Generación de Datos", "Habla con tus Datos"])
+# Navigation
+st.sidebar.title("Data Assistant")
+app_mode = st.sidebar.radio("Navigation", ["Data Generation", "Chat with Data"])
 
-# Renderizado de páginas
-if app_mode == "Generación de Datos":
+# Page rendering
+if app_mode == "Data Generation":
     page = DataGenerationPage()
     page.render()
-elif app_mode == "Habla con tus Datos":
+elif app_mode == "Chat with Data":
     page = ChatWithDataPage()
     page.render()
